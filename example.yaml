@@ -1,0 +1,19 @@
+server:
+  address: "0.0.0.0"
+  port: 2525
+  dataPath: ./data
+
+filters:
+  to:
+    - ^.*@gmail.com$ # block all emails to gmail
+
+auth:
+  plain:
+    hitori: goto
+
+proxy:
+  address: "smtp.fastmail.com"
+  username: "fastboat@fastmail.com"
+  password: "somePasswordThatsSecure"
+
+logLevel: -8 # tracing

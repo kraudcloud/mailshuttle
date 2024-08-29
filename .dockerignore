@@ -1,0 +1,7 @@
+.envrc
+.env
+example.yaml
+flake.*
+.git
+.github
+data
