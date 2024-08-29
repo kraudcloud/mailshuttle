@@ -9,7 +9,7 @@ import (
 
 // SMTPTarget represents a target server to proxy messages to.
 type SMTPTarget struct {
-	config ProxyConfig
+	configStore ConfigLoader
 }
 
 // Send sends an email message to the specified recipient using the SMTP target configuration.
@@ -20,14 +20,15 @@ type SMTPTarget struct {
 // authenticate with the SMTP server using SASL login.
 // The function returns an error if any part of the email sending process fails.
 func (s *SMTPTarget) Send(e Envelope) error {
-	client, err := smtp.DialStartTLS(s.config.Addr(), nil)
+	proxy := s.configStore.Load().Proxy
+	client, err := smtp.DialStartTLS(proxy.Addr(), nil)
 	if err != nil {
 		return err
 	}
 
 	// Authenticate if credentials are provided
-	if s.config.Username != "" && s.config.Password != "" {
-		err = client.Auth(sasl.NewLoginClient(s.config.Username, s.config.Password))
+	if proxy.Username != "" && proxy.Password != "" {
+		err = client.Auth(sasl.NewLoginClient(proxy.Username, string(proxy.Password)))
 		if err != nil {
 			return err
 		}

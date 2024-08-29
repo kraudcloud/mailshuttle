@@ -1,0 +1,34 @@
+server:
+  # listen on all interfaces
+  address: 0.0.0.0
+  # port to listen on;
+  # we use a non-privileged port by default
+  port: 2525
+  # path to store emails proxied in
+  # it will be created if it doesn't exist
+  dataPath: /var/lib/mailshuttle/mails
+
+filters:
+  # to filter email destination addresses using a regex.
+  # matches is discarded
+  to: []
+  # maxMessageSize is the maximum size for an email body.
+  # emails bigger than 8MB will be truncated, possibly
+  # creating bad emails.
+  maxMessageSize: 8388608 # 1024*1024*8
+
+proxy:
+  # address of the SMTP server to proxy to
+  address: ""
+  # port of the SMTP server to proxy to
+  port: 587
+  # username to authenticate with
+  username: ""
+  # password to authenticate with
+  password: ""
+auth:
+  # plain is key:value object of username:passwords
+  plain: {}
+
+# logLevel is the level of logging to output.
+logLevel: INFO

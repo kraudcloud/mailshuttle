@@ -18,54 +18,35 @@ import (
 var (
 	configPath   = cmp.Or(os.Getenv("CONFIG_PATH"), path.Join(cmp.Or(configDir, "/etc"), "mailshuttle/config.yaml"))
 	configDir, _ = os.UserConfigDir()
-	dumpConfig   = os.Getenv("DUMP_CONFIG") != ""
 )
 
 // Filter is a function that filters messages based on the sender and recipient.
 type Filter func(from, to string) error
 
 func main() {
-	slog.Info("opening config file", "CONFIG_PATH", configPath)
-	f, err := os.Open(configPath)
+	c, err := NewConfigStore(configPath)
 	if err != nil {
-		slog.Error("failed to open config file", "err", err)
-		os.Exit(2)
-	}
-	defer f.Close()
-
-	c, err := ParseConfig(f)
-	if err != nil {
-		slog.Error("failed to parse config file", "err", err)
+		slog.Error("failed to load config", "err", err)
 		os.Exit(1)
 	}
 
-	if dumpConfig {
-		if err := DumpConfig(os.Stdout, c); err != nil {
-			slog.Error("failed to dump config file", "err", err)
-			os.Exit(1)
-		}
-		os.Exit(0)
-	}
-
-	slog.SetLogLoggerLevel(slog.Level(c.LogLevel))
-
 	b := &Backend{
-		authStore: &AuthStore{users: c.Auth.Plain},
+		authStore: &AuthStore{configStore: c},
 		proxy: Proxy{
-			filters: c.Filter,
-			target:  &SMTPTarget{config: c.Proxy},
-			saver:   NewSaver(c.Server.DataPath),
+			configStore: c,
+			target:      &SMTPTarget{configStore: c},
+			saver:       NewSaver(c.Load().Server.DataPath),
 		},
 	}
 
-	if err := Serve(c.Server, b); err != nil {
+	if err := Serve(c, b); err != nil {
 		slog.Error("failed to serve", "err", err)
 		os.Exit(1)
 	}
 }
 
-func Serve(sc ServerConfig, b smtp.Backend) error {
-	l, err := net.Listen("tcp", sc.String())
+func Serve(configStore ConfigLoader, b smtp.Backend) error {
+	l, err := net.Listen("tcp", configStore.Load().Server.String())
 	if err != nil {
 		slog.Error("failed to listen", "err", err)
 		return err
@@ -107,8 +88,8 @@ func NewReader(r io.Reader) ReaderStringer {
 // Proxy is a struct that proxies SMTP messages through a target SMTP server, applying filters to the messages.
 // The Proxy struct has two fields:
 type Proxy struct {
-	filters FilterConfig
-	target  interface {
+	configStore ConfigLoader
+	target      interface {
 		Send(e Envelope) error
 	}
 	saver interface {
@@ -133,7 +114,7 @@ type Envelope struct {
 func (p Proxy) Do(e Envelope) error {
 	l := slog.With("from", e.From, "to", e.To)
 
-	buf, err := io.ReadAll(io.LimitReader(e.Body, int64(p.filters.MaxMessageSize)))
+	buf, err := io.ReadAll(io.LimitReader(e.Body, int64(p.configStore.Load().Filters.MaxMessageSize)))
 	if err != nil {
 		l.Error("failed to read message", "err", err)
 		return err
@@ -150,7 +131,7 @@ func (p Proxy) Do(e Envelope) error {
 
 	e.Body = bytes.NewReader(buf)
 	l.Debug("filtering")
-	for _, r := range p.filters.To {
+	for _, r := range p.configStore.Load().Filters.To {
 		if r.MatchString(e.To) {
 			l.Info("dropping email", "rule", r)
 			return nil // just drop the email

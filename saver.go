@@ -15,7 +15,7 @@ type EmailSaver struct {
 func NewSaver(path string) EmailSaver {
 	err := os.MkdirAll(path, 0o700)
 	if err != nil {
-		panic(err)
+		panic("Failed to create directory " + path + ": " + err.Error())
 	}
 
 	return EmailSaver{
