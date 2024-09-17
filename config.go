@@ -34,9 +34,9 @@ func init() {
 type (
 	// ServerConfig holds the configuration for the server, including the address and port.
 	ServerConfig struct {
-		Address  string `yaml:"address" json:"address"`
-		Port     uint16 `yaml:"port" json:"port"`
-		DataPath string `yaml:"dataPath" json:"dataPath"`
+		Address     string `yaml:"address" json:"address"`
+		Port        uint16 `yaml:"port" json:"port"`
+		LogFilePath string `yaml:"logfilePath" json:"logfilePath"`
 	}
 
 	// FilterConfig holds the regular expression patterns used to filter destinations.
@@ -67,11 +67,10 @@ type (
 
 	// Config holds the configuration for the application.
 	Config struct {
-		Server   ServerConfig `yaml:"server" json:"server"`
-		Filters  FilterConfig `yaml:"filters" json:"filter"`
-		Proxy    ProxyConfig  `yaml:"proxy" json:"proxy"`
-		Auth     AuthConfig   `yaml:"auth" json:"auth"`
-		LogLevel slog.Level   `yaml:"logLevel" json:"logLevel"`
+		Server  ServerConfig `yaml:"server" json:"server"`
+		Filters FilterConfig `yaml:"filters" json:"filter"`
+		Proxy   ProxyConfig  `yaml:"proxy" json:"proxy"`
+		Auth    AuthConfig   `yaml:"auth" json:"auth"`
 	}
 )
 
@@ -79,9 +78,9 @@ type (
 func (c *Config) Clone() *Config {
 	return &Config{
 		Server: ServerConfig{
-			Address:  c.Server.Address,
-			Port:     c.Server.Port,
-			DataPath: c.Server.DataPath,
+			Address:     c.Server.Address,
+			Port:        c.Server.Port,
+			LogFilePath: c.Server.LogFilePath,
 		},
 		Filters: FilterConfig{
 			To:             slices.Clone(c.Filters.To),
@@ -91,7 +90,6 @@ func (c *Config) Clone() *Config {
 		Auth: AuthConfig{
 			Plain: maps.Clone(c.Auth.Plain),
 		},
-		LogLevel: c.LogLevel,
 	}
 }
 
@@ -172,9 +170,7 @@ func (cs *ConfigStore) reload(lastSync time.Time) error {
 	buf, _ := json.Marshal(c)
 	cs.state.Store(c)
 
-	slog.SetLogLoggerLevel(c.LogLevel)
 	slog.Debug("loaded new config", "config", string(buf))
-
 	return nil
 }
 

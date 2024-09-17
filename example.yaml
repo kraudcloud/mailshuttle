@@ -1,5 +1,5 @@
 server:
-  dataPath: ./data
+  logfilePath: ./mailshuttle.log
 
 filters:
   to:
@@ -13,5 +13,3 @@ proxy:
   address: "smtp.fastmail.com"
   username: "fastboat@fastmail.com"
   password: "somePasswordThatsSecure"
-
-logLevel: DEBUG

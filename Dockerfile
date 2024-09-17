@@ -15,5 +15,6 @@ COPY --from=builder /app/mailshuttle /usr/bin
 RUN mkdir -p /etc/mailshuttle
 ENV CONFIG_PATH=/etc/mailshuttle/config.yaml
 
+VOLUME ["/var/lib/mailshuttle"]
 EXPOSE 2525
 ENTRYPOINT ["/usr/bin/mailshuttle"]

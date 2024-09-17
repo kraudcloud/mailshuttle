@@ -3,13 +3,11 @@ package main
 import (
 	"bytes"
 	"cmp"
-	"fmt"
 	"io"
 	"log/slog"
 	"net"
 	"os"
 	"path"
-	"time"
 	"unsafe"
 
 	"github.com/emersion/go-smtp"
@@ -20,22 +18,48 @@ var (
 	configDir, _ = os.UserConfigDir()
 )
 
+func logLevel() slog.Level {
+	level := slog.Level(0)
+	levelStr := cmp.Or(os.Getenv("LOG_LEVEL"), "INFO")
+	if err := level.UnmarshalText([]byte(levelStr)); err != nil {
+		slog.Error("failed to parse log level", "err", err)
+		os.Exit(1)
+	}
+
+	return level
+}
+
 // Filter is a function that filters messages based on the sender and recipient.
 type Filter func(from, to string) error
 
 func main() {
+	slog.SetLogLoggerLevel(logLevel())
+
 	c, err := NewConfigStore(configPath)
 	if err != nil {
 		slog.Error("failed to load config", "err", err)
 		os.Exit(1)
 	}
 
+	logfile := c.Load().Server.LogFilePath
+	logW := io.Writer(os.Stderr)
+	if logfile != "" {
+		os.MkdirAll(path.Dir(logfile), 0755)
+		f, err := os.OpenFile(logfile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			slog.Error("failed to open log file", "err", err)
+			os.Exit(1)
+		}
+		defer f.Close()
+		logW = io.MultiWriter(os.Stderr, f)
+	}
+	slog.SetDefault(slog.New(slog.NewTextHandler(logW, nil)))
+
 	b := &Backend{
 		authStore: &AuthStore{configStore: c},
 		proxy: Proxy{
 			configStore: c,
 			target:      &SMTPTarget{configStore: c},
-			saver:       NewSaver(c.Load().Server.DataPath),
 		},
 	}
 
@@ -92,9 +116,6 @@ type Proxy struct {
 	target      interface {
 		Send(e Envelope) error
 	}
-	saver interface {
-		Save(e Envelope, name string) error
-	}
 }
 
 // Envelope represents an SMTP message envelope, containing the sender, recipients, and message body.
@@ -117,15 +138,6 @@ func (p Proxy) Do(e Envelope) error {
 	buf, err := io.ReadAll(io.LimitReader(e.Body, int64(p.configStore.Load().Filters.MaxMessageSize)))
 	if err != nil {
 		l.Error("failed to read message", "err", err)
-		return err
-	}
-
-	e.Body = bytes.NewReader(buf)
-
-	name := fmt.Sprintf("%s.eml", time.Now().UTC().Format(time.RFC3339))
-	l.Debug("saving", "name", name)
-	if err := p.saver.Save(e, name); err != nil {
-		l.Error("failed to save message", "err", err)
 		return err
 	}
 

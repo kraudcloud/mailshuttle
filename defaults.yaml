@@ -4,9 +4,8 @@ server:
   # port to listen on;
   # we use a non-privileged port by default
   port: 2525
-  # path to store emails proxied in
-  # it will be created if it doesn't exist
-  dataPath: /var/lib/mailshuttle/mails
+  # path to store logs
+  logfilePath: /var/lib/mailshuttle/mailshuttle.log
 
 filters:
   # to filter email destination addresses using a regex.
@@ -29,6 +28,3 @@ proxy:
 auth:
   # plain is key:value object of username:passwords
   plain: {}
-
-# logLevel is the level of logging to output.
-logLevel: INFO
