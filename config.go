@@ -47,10 +47,11 @@ type (
 
 	// ProxyConfig holds the configuration for the proxy server.
 	ProxyConfig struct {
-		Address  string   `yaml:"address" json:"address"`
-		Port     uint16   `yaml:"port" json:"port"`
-		Username string   `yaml:"username" json:"username"`
-		Password Password `yaml:"password" json:"password"`
+		Address           string            `yaml:"address" json:"address"`
+		Port              uint16            `yaml:"port" json:"port"`
+		Username          string            `yaml:"username" json:"username"`
+		Password          Password          `yaml:"password" json:"password"`
+		AdditionalHeaders map[string]string `yaml:"additionalHeaders" json:"additionalHeaders"`
 		// TODO: override some fields (eg `From` address)
 		// this requires parsing the email body (it's just mime/multipart)
 		// and replacing the `From` field with a properly formatted one.

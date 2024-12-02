@@ -25,6 +25,9 @@ proxy:
   username: ""
   # password to authenticate with
   password: ""
+  # additionalHeaders to add to the request being proxied. Only supports `key: value` for simplicity
+  additionalHeaders:
+    X-Mail-Gateway: github.com/kraudcloud/mailshuttle
 auth:
   # plain is key:value object of username:passwords
   plain: {}

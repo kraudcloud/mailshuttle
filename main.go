@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"cmp"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -11,6 +11,7 @@ import (
 	"unsafe"
 
 	"github.com/emersion/go-smtp"
+	"github.com/wneessen/go-mail"
 )
 
 var (
@@ -135,20 +136,26 @@ type Envelope struct {
 func (p Proxy) Do(e Envelope) error {
 	l := slog.With("from", e.From, "to", e.To)
 
-	buf, err := io.ReadAll(io.LimitReader(e.Body, int64(p.configStore.Load().Filters.MaxMessageSize)))
-	if err != nil {
-		l.Error("failed to read message", "err", err)
-		return err
-	}
-
-	e.Body = bytes.NewReader(buf)
+	conf := p.configStore.Load()
 	l.Debug("filtering")
-	for _, r := range p.configStore.Load().Filters.To {
+	for _, r := range conf.Filters.To {
 		if r.MatchString(e.To) {
 			l.Info("dropping email", "rule", r)
 			return nil // just drop the email
 		}
 	}
+
+	// rfc5322 compatible email parser.
+	// This does all the heavy lifting for us for email parsing and editing.
+	eml, err := mail.EMLToMsgFromReader(io.LimitReader(e.Body, int64(conf.Filters.MaxMessageSize)))
+	if err != nil {
+		return fmt.Errorf("error parsing email: %w", err)
+	}
+
+	for k, v := range conf.Proxy.AdditionalHeaders {
+		eml.SetGenHeader(mail.Header(k), v)
+	}
+	e.Body = eml.NewReader()
 
 	l.Info("proxying")
 	return p.target.Send(e)
